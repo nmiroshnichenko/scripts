@@ -37,6 +37,7 @@ class DiskInfoLinux(DiskInfo):
                     partition_number += 1
                     disk = Disk(partition_number, size, current_hard_disk)
                 else:
+                    partition_number = 0
                     hard_disk_number += 1
                     disk = Disk(hard_disk_number, size, None)
                     current_hard_disk = disk
@@ -57,6 +58,29 @@ class DiskInfoWindows(DiskInfo):
             print 'ERROR: you should install lib: pip install pypiwin32'
             sys.exit(66)
 
+        strComputer = '.'
+        objWMIService = win32com.client.Dispatch('WbemScripting.SWbemLocator')
+        objSWbemServices = objWMIService.ConnectServer(strComputer,'root\cimv2')
+        colItems = objSWbemServices.ExecQuery('Select * from Win32_DiskDrive')
+        hd_list = []
+        for objItem in colItems:
+            hd_list.append((objItem.DeviceID, objItem.Size))
+        hd_list.sort()
+
+        hard_disk_number = 0
+        current_hard_disk = None
+        for hd in hd_list:
+            partition_number = 0
+            hard_disk_number += 1
+            disk = Disk(hard_disk_number, hd[1], None)
+            current_hard_disk = disk
+            disk_list.append(disk)
+            colItems = objSWbemServices.ExecQuery(
+                'Select * from Win32_DiskPartition where DiskIndex={}'.format(hard_disk_number - 1))
+            for objItem in colItems:
+                partition_number += 1
+                disk = Disk(partition_number, objItem.Size, current_hard_disk)
+                disk_list.append(disk)
         return disk_list
 
 
